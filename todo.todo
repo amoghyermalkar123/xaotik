@@ -1,0 +1,12 @@
+[*] write a basic implementation of concurrent request model.
+[] write a statistics module
+    [] write response metrics:
+        [] consider response time as total of server response time + latency
+        [] additionally provide trace metrics so that users can segregate between actual
+                server response time and other latency metrics
+
+[] finally a(some) reporting mechanism(s)
+[] wrap around a CLI
+
+bugs :
+[] transaction rate should always be floating point 
