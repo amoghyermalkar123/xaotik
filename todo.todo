@@ -1,12 +1,28 @@
 [*] write a basic implementation of concurrent request model.
 [] write a statistics module
-    [] write response metrics:
+    [] metrics:
         [] consider response time as total of server response time + latency
         [] additionally provide trace metrics so that users can segregate between actual
                 server response time and other latency metrics
-
-[] finally a(some) reporting mechanism(s)
+        [] slowest, fastest, average
+        [] data
+        [] latency distribution
+[] file of urls to test from
 [] wrap around a CLI
+[] finally a(some) reporting mechanism(s)
+        * for now a tui and single machine tool
+                * todo
+                        [blocked by metrics finalisation] terminal layout 
+                * bugs
+                        [] fix : exit draw loop
+[last] r/w throughput
 
 bugs :
 [] transaction rate should always be floating point 
+
+inspirations : * https://github.com/hatoo/oha
+                 (main program flow)
+                 main.rs -> client.rs -> monitor.rs -> printer.rs
+                 (files other than this are small and only util) 
+               * github -> gobench
+               * loadtestninja - one which i wrote in go 
