@@ -1,23 +1,10 @@
 use futures::{self};
 use std::{error::Error, sync::Arc, time::Instant};
 use tokio::sync::mpsc;
+mod tui_backend;
+mod types;
 
-pub struct Report {
-    succeeded: i64,
-    failed: i64,
-    total_requests: i64,
-    elapsed: u64,
-    transaction_rate: f64,
-}
-
-impl Report {
-    fn add_report(&mut self, succeed_count: i64, failed_count: i64, total_req_count: i64, el: u64) {
-        self.succeeded += succeed_count;
-        self.failed += failed_count;
-        self.total_requests += total_req_count;
-        self.elapsed = el;
-    }
-}
+use types::Report;
 
 pub struct Tower {
     // send end
@@ -64,13 +51,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     );
                 }
                 None => {
-                    report.transaction_rate =
-                        (report.total_requests / report.elapsed as i64) as f64;
-                        println!(
-                            "report: \n\t requests success: {}\n\t requests failed : {} \n\t total requests : {} \n\t elapsed time : {} second(s) \n\t transaction rate: {} requests/s",
-                            report.succeeded, report.failed, report.total_requests, report.elapsed, report.transaction_rate
-                        );
-                    break
+                    let _ = tui_backend::write_to_t(&mut report).await;
+                    break;
                 }
             }
         }
