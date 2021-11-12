@@ -10,3 +10,5 @@ reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 crossbeam = "0.8"
+tui = { version = "0.16.0", default-features = false, features = ["crossterm"] }
+crossterm = "0.22"
