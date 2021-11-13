@@ -1,5 +1,8 @@
 [*] write a basic implementation of concurrent request model.
+
 [IMP] learn about lifetimes, ive used because i am spoiled by the compiler
+[IMP] learn more about iterators, mapping, collect, etc
+
 
 [first-do-this] create a pipeline between request handler tower and the tui backend 
 
@@ -21,6 +24,7 @@
 
 bugs :
 [] transaction rate should always be floating point 
+[] request details widget does not render on updates 
 
 inspirations : * https://github.com/hatoo/oha
                  (main program flow)

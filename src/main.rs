@@ -1,6 +1,6 @@
 use futures::{self};
 use std::{error::Error, sync::Arc, time::Instant};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 mod tui_backend;
 mod types;
 
@@ -49,9 +49,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         received_report.total_requests,
                         received_report.elapsed,
                     );
+                    let reporter = &report;
+                    // println!("{}", reporter.total_requests);
+                    let _ = tui_backend::write_to_t(reporter).await;
                 }
                 None => {
-                    let _ = tui_backend::write_to_t(&mut report).await;
                     break;
                 }
             }

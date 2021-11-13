@@ -39,17 +39,20 @@ impl<'a> RequestWrapper<'a> {
     }
 }
 
-pub async fn write_to_t(report: &mut Report) -> Result<(), Box<dyn Error>> {
+pub async fn write_to_t(report: &Report) -> Result<(), Box<dyn Error>> {
     let mut terminal = {
         let backend = CrosstermBackend::new(io::stdout());
         Terminal::new(backend)?
     };
 
     let start = std::time::Instant::now();
-
+    
     terminal.clear()?;
 
+    println!("{}", report.total_requests);
+    
     loop {
+        
         terminal.draw(|f| {
             let row4 = Layout::default()
                 .direction(Direction::Vertical)
@@ -126,13 +129,15 @@ pub async fn write_to_t(report: &mut Report) -> Result<(), Box<dyn Error>> {
                 .bar_width(resp_histo_width as u16);
             f.render_widget(latency_bar_chart, mid[1]);
 
+            
             let request_tuple = RequestWrapper::new(
                 Number::Int(report.total_requests),
                 Number::Int(report.succeeded),
                 Number::Int(report.failed),
                 Number::Float(report.transaction_rate),
             );
-
+            
+            
             let events: Vec<ListItem> = request_tuple
                 .events
                 .iter()
