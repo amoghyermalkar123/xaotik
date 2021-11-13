@@ -1,20 +1,22 @@
 [*] write a basic implementation of concurrent request model.
+[IMP] learn about lifetimes, ive used because i am spoiled by the compiler
+
+[first-do-this] create a pipeline between request handler tower and the tui backend 
+
 [] write a statistics module
     [] metrics:
-        [] consider response time as total of server response time + latency
-        [] additionally provide trace metrics so that users can segregate between actual
-                server response time and other latency metrics
-        [] slowest, fastest, average
-        [] data
-        [] latency distribution
+        [] response time distribution (histogram)
+        [] latency distribution (histogram)
+        [*] req/sec, total, success, fail
 [] file of urls to test from
 [] wrap around a CLI
+
 [] finally a(some) reporting mechanism(s)
-        * for now a tui and single machine tool
-                * todo
-                        [blocked by metrics finalisation] terminal layout 
+        * while testing have a tui
+        * after test generate a report
                 * bugs
                         [] fix : exit draw loop
+
 [last] r/w throughput
 
 bugs :
