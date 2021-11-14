@@ -2,7 +2,7 @@
 
 [IMP] learn about lifetimes, ive used because i am spoiled by the compiler
 [IMP] learn more about iterators, mapping, collect, etc
-
+[IMP] get better at understanding the anatomy of error handling in rust
 
 [first-do-this] create a pipeline between request handler tower and the tui backend 
 
@@ -25,6 +25,7 @@
 bugs :
 [] transaction rate should always be floating point 
 [] request details widget does not render on updates 
+[] loadtest for the amount of requests instead of given time 
 
 inspirations : * https://github.com/hatoo/oha
                  (main program flow)

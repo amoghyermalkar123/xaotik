@@ -1,6 +1,6 @@
 use futures::{self};
 use std::{error::Error, sync::Arc, time::Instant};
-use tokio::sync::mpsc::{self, Sender};
+use tokio::sync::mpsc::{self};
 mod tui_backend;
 mod types;
 
@@ -15,7 +15,7 @@ pub struct Tower {
 
 impl Tower {
     fn new() -> Tower {
-        let (tx, mut rx) = mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(100);
         Tower {
             sender: tx,
             receiver: rx,
@@ -40,24 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let tower = tokio::spawn(async move {
-        loop {
-            match report_receiver.recv().await {
-                Some(received_report) => {
-                    report.add_report(
-                        received_report.succeeded,
-                        received_report.failed,
-                        received_report.total_requests,
-                        received_report.elapsed,
-                    );
-                    let reporter = &report;
-                    // println!("{}", reporter.total_requests);
-                    let _ = tui_backend::write_to_t(reporter).await;
-                }
-                None => {
-                    break;
-                }
-            }
-        }
+        let _ = tui_backend::write_to_t(&mut report, &mut report_receiver).await;
     });
 
     let start = Instant::now();
@@ -95,7 +78,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn load_test(sender: &tokio::sync::mpsc::Sender<Arc<Report>>) {
     let mut handles: Vec<tokio::task::JoinHandle<()>> = vec![];
 
-    for _i in 0..100 {
+    for _i in 0..100  {
         let sender = sender.clone();
 
         let handle = tokio::spawn(async move {
