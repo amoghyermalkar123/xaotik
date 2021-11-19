@@ -4,7 +4,7 @@
 [IMP] learn more about iterators, mapping, collect, etc
 [IMP] get better at understanding the anatomy of error handling in rust
 
-[first-do-this] create a pipeline between request handler tower and the tui backend 
+[*] create a pipeline between request handler tower and the tui backend 
 
 [] write a statistics module
     [] metrics:
@@ -18,18 +18,32 @@
         * while testing have a tui
         * after test generate a report
                 * bugs
-                        [] fix : exit draw loop
+                        [*] fix : exit draw loop
 
 [last] r/w throughput
 
 bugs :
 [] transaction rate should always be floating point 
-[] request details widget does not render on updates 
-[] loadtest for the amount of requests instead of given time 
+[*] request details widget does not render on updates 
+[*] loadtest for the given time instead of amount of requests 
+[*] latency data is incorrect (same urls compared to other tools)
+[*] the duration being calculated for the request is not of the request itself 
+        it is the duration from when the code started to when the task itself 
+        was scheduled by tokio
+        reason : it was happening because we were spawning requests. what that
+                does is make requests switchable and managaeble directly by tokio
+                which basically caused one request being switched and replaced over 
+                by other request when it was suspended (.await). We now have to 
+                attach or load balance a couple of requests to one task and have tokio schedule this
+                task over OS threads (which are our spawns in the load_tes function), 
+                avoiding individual requests being swithced over hence avoiding inaccurate duration/latency 
+                calculation.
+[] elapsed time not visible 
+[] transaction rate not updating 
+[] disconenct between actual test and progress bar duration 
+[] add option to consider avoidance of coordination omission problem 
 
 inspirations : * https://github.com/hatoo/oha
-                 (main program flow)
-                 main.rs -> client.rs -> monitor.rs -> printer.rs
-                 (files other than this are small and only util) 
-               * github -> gobench
-               * loadtestninja - one which i wrote in go 
+               * gobench
+               * loadtestninja - one which i wrote in go
+               * siege

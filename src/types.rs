@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 pub struct Report {
     pub succeeded: i64,
     pub failed: i64,
     pub total_requests: i64,
     pub elapsed: u64,
     pub transaction_rate: f64,
+    pub duration : Duration
 }
 
 impl Report {
