@@ -50,12 +50,7 @@ pub async fn write_to_t(
     test_started_at: Instant,
     total_duration_for_test: Duration,
 ) -> Result<(), Box<dyn Error>> {
-    use std::fs::File;
 
-    let mut f = match File::create("debug.txt") {
-        Ok(file) => file,
-        _ => panic!(),
-    };
 
     let mut terminal = {
         let backend = CrosstermBackend::new(io::stdout());
@@ -74,22 +69,13 @@ pub async fn write_to_t(
                     received_report.total_requests,
                     received_report.elapsed,
                 );
-                let _ = write!(
-                    f,
-                    "{:?}    {:?} \n",
-                    received_report.duration,
-                    received_report.duration.as_secs_f64()
-                );
 
                 durations.push(received_report.duration);
+                
                 let dur_copy = durations.clone();
-                // TODO: ponder over efficiency
-                // let mut dur_collection = dur_copy
-                // .iter()
-                // .map(|dur| dur.as_secs_f64())
-                // .collect::<Vec<_>>();
-                // println!("{:?}", dur_collection);
-                // println!("=================================")
+
+                report.transaction_rate = test_started_at.elapsed().as_secs_f64() / received_report.total_requests as f64; 
+                
                 draw(
                     &mut terminal,
                     report,
@@ -160,20 +146,28 @@ fn draw(
             .ratio(progress);
         f.render_widget(gauge, row4[0]);
 
-        let response_time_data: Vec<(&str, u64)> = vec![("s1", 110), ("s1", 1010)];
+        let err_code_data: Vec<(&str, u64)> = vec![("s1", 110), ("s1", 1010)];
 
-        let resp_histo_width = 7;
+        let err_histo_width = 7;
 
-        let response_time_bar_chart = BarChart::default()
+        let err_code_bar_chart = BarChart::default()
             .block(
                 Block::default()
-                    .title("Response Time Distribution")
+                    .title("Error Code Distribution")
                     .borders(Borders::ALL),
             )
-            .data(response_time_data.as_slice())
-            .bar_width(resp_histo_width as u16);
+            .data(err_code_data.as_slice())
+            .bar_width(err_histo_width as u16);
 
-        f.render_widget(response_time_bar_chart, mid[0]);
+        f.render_widget(err_code_bar_chart, mid[0]);
+
+
+        let machine_details_list = List::new(Vec::new())
+        .block(Block::default().borders(Borders::ALL).title("Machine Details"))
+        .start_corner(Corner::TopLeft);
+
+        f.render_widget(machine_details_list, mid[1]);
+
 
         let mut dur_collection = durations
             .iter()
@@ -242,7 +236,7 @@ fn draw(
             .collect();
 
         let events_list = List::new(events)
-            .block(Block::default().borders(Borders::ALL).title("Requests Log"))
+            .block(Block::default().borders(Borders::ALL).title("Request Details"))
             .start_corner(Corner::TopLeft);
 
         f.render_widget(events_list, bottom[0]);
