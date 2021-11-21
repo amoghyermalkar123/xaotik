@@ -10,6 +10,16 @@ pub struct Report {
 }
 
 impl Report {
+    pub fn new() -> Self {
+        Report {
+            succeeded: 0,
+            failed: 0,
+            total_requests: 0,
+            elapsed: 0,
+            transaction_rate: 0.0,
+            duration: Duration::new(0, 0),
+        }
+    }
     pub fn add_report(
         &mut self,
         succeed_count: i64,
