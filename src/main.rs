@@ -30,66 +30,15 @@ impl Tower {
 // #[tokio::main]
 // #[tokio::main(flavor = "current_thread")]
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let report_manager = Tower::new();
-
-    let mut report_receiver = report_manager.receiver;
-
-    let mut report = Report {
-        succeeded: 0,
-        failed: 0,
-        total_requests: 0,
-        elapsed: 0,
-        transaction_rate: 0.0,
-        duration: Duration::new(0, 0),
-    };
-
-    let start = Instant::now();
-
-    let tower = tokio::spawn(async move {
-        let _ = tui_backend::write_to_t(
-            &mut report,
-            &mut report_receiver,
-            start,
-            Duration::new(10, 0),
-        )
-        .await;
-    });
-
-    load_test(&report_manager.sender).await;
-    let elapsed = start.elapsed().as_secs();
-
-    let sender = report_manager.sender.clone();
-
-    let elapsed_handler = tokio::spawn(async move {
-        match sender
-            .send(Arc::new(Report {
-                succeeded: 0,
-                failed: 0,
-                total_requests: 0,
-                elapsed: elapsed,
-                transaction_rate: 0.0,
-                duration: Duration::new(0, 0),
-            }))
-            .await
-        {
-            Ok(_) => {}
-            Err(_) => {
-                println!("err while sending to channel");
-            }
-        }
-    });
-
-    let _ = elapsed_handler.await;
-
-    drop(report_manager.sender);
-
-    tower.await?;
+async fn main() -> Result<(), ()> {
+    load_test().await;
     Ok(())
 }
 
-async fn load_test(sender: &tokio::sync::mpsc::Sender<Arc<Report>>) {
-    let csend = sender.clone();
+async fn load_test() {
+    let mut report_manager = Tower::new();
+
+    let csend = report_manager.sender.clone();
 
     let (tx, rx) = flume::unbounded();
     let workers: i32 = 10;
@@ -118,8 +67,21 @@ async fn load_test(sender: &tokio::sync::mpsc::Sender<Arc<Report>>) {
 
     let start = Instant::now();
     let dead_line = start + Duration::new(10, 0);
+
+    let mut report = Report::new();
+
+    let tower = tokio::spawn(async move {
+        let _ = tui_backend::write_to_t(
+            &mut report,
+            &mut report_manager.receiver,
+            start,
+            Duration::new(10, 0),
+        )
+        .await;
+    });
+
     // qps is queries per second
-    let qps = 100;
+    let qps = 10;
 
     let load_gen = tokio::spawn(async move {
         for i in 0.. {
@@ -147,6 +109,8 @@ async fn load_test(sender: &tokio::sync::mpsc::Sender<Arc<Report>>) {
     }
 
     let _ = load_gen.await;
+
+    let _ = tower.await;
 }
 
 async fn do_req() -> Result<Arc<Report>, ()> {
