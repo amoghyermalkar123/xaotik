@@ -13,7 +13,7 @@
         [*] req/sec, total, success, fail
 [] file of urls to test from
 [] wrap around a CLI
-
+[] wireless network interface information
 [] finally a(some) reporting mechanism(s)
         * while testing have a tui
         * after test generate a report
@@ -23,7 +23,7 @@
 [last] r/w throughput
 
 bugs :
-[] transaction rate should always be floating point 
+[*] transaction rate should always be floating point 
 [*] request details widget does not render on updates 
 [*] loadtest for the given time instead of amount of requests 
 [*] latency data is incorrect (same urls compared to other tools)
@@ -39,9 +39,10 @@ bugs :
                 avoiding individual requests being swithced over hence avoiding inaccurate duration/latency 
                 calculation.
 [] elapsed time not visible 
-[] transaction rate not updating 
-[] disconenct between actual test and progress bar duration 
+[*] transaction rate not updating 
+[*] disconenct between actual test and progress bar duration 
 [] add option to consider avoidance of coordination omission problem 
+[] p99 latency progression chart display 
 
 inspirations : * https://github.com/hatoo/oha
                * gobench
