@@ -14,6 +14,9 @@
 [] file of urls to test from
 [] wrap around a CLI
 [] wireless network interface information
+        [] use linux netlink information
+[] better error handling
+[] better code practises
 [] finally a(some) reporting mechanism(s)
         * while testing have a tui
         * after test generate a report
