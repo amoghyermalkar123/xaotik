@@ -9,12 +9,12 @@
 [] write a statistics module
     [] metrics:
         [] response time distribution (histogram)
-        [] latency distribution (histogram)
+        [*] latency distribution (p99, p95, p90)
         [*] req/sec, total, success, fail
 [] file of urls to test from
 [] wrap around a CLI
-[] wireless network interface information
-        [] use linux netlink information
+[*] wireless network interface information
+        [*] use linux netlink information
 [] better error handling
 [] better code practises
 [] finally a(some) reporting mechanism(s)
@@ -41,7 +41,7 @@ bugs :
                 task over OS threads (which are our spawns in the load_tes function), 
                 avoiding individual requests being swithced over hence avoiding inaccurate duration/latency 
                 calculation.
-[] elapsed time not visible 
+[*] elapsed time not visible 
 [*] transaction rate not updating 
 [*] disconenct between actual test and progress bar duration 
 [] add option to consider avoidance of coordination omission problem 
