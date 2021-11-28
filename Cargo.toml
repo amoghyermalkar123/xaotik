@@ -13,3 +13,4 @@ crossbeam = "0.8"
 tui = { version = "0.16.0", default-features = false, features = ["crossterm"] }
 crossterm = "0.22"
 flume = "0.10.2"
+netlink_wi = "0.3.0"
