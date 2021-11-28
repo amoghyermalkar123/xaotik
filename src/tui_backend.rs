@@ -1,9 +1,12 @@
+use crate::MachineDetails;
 use crate::Report;
+
 use crossterm::style::Stylize;
 use crossterm::{
     style::{Print, ResetColor, SetForegroundColor},
     ExecutableCommand,
 };
+use netlink_wi::NlSocket;
 use std::error::Error;
 use std::io::stdout;
 use std::io::Write;
@@ -50,8 +53,6 @@ pub async fn write_to_t(
     test_started_at: Instant,
     total_duration_for_test: Duration,
 ) -> Result<(), Box<dyn Error>> {
-
-
     let mut terminal = {
         let backend = CrosstermBackend::new(io::stdout());
         Terminal::new(backend)?
@@ -71,17 +72,50 @@ pub async fn write_to_t(
                 );
 
                 durations.push(received_report.duration);
-                
+
                 let dur_copy = durations.clone();
 
-                report.transaction_rate = test_started_at.elapsed().as_secs_f64() / received_report.total_requests as f64; 
-                
+                report.transaction_rate =
+                    test_started_at.elapsed().as_secs_f64() / received_report.total_requests as f64;
+                let mut machine_details: MachineDetails = MachineDetails::new();
+
+                let socket = NlSocket::connect().unwrap();
+                let interfaces = socket.list_interfaces().unwrap();
+                for interface in interfaces {
+                    let interface = interface.unwrap();
+                    let stations = socket.list_stations(interface.interface_index).unwrap();
+                    for station in stations {
+                        let station = station.unwrap();
+                        // station.tx_bitrate.unwrap_or(0);
+                        machine_details.avg_signal = match station.average_signal {
+                            Some(v) => v,
+                            None => 0,
+                        };
+                        machine_details.rx_bitrate = match station.rx_bitrate {
+                            Some(v) => v.bitrate as f32 * 100.0 / 1000 as f32,
+                            None => 0.0,
+                        };
+                        machine_details.tx_bitrate = match station.tx_bitrate {
+                            Some(v) => v.bitrate as f32 * 100.0 / 1000 as f32,
+                            None => 0.0,
+                        };
+                        machine_details.frequency = match interface.frequency {
+                            Some(v) => v,
+                            None => 0,
+                        };
+                        machine_details.ssid = match interface.ssid {
+                            Some(ref v) => v.to_string(),
+                            None => 0.to_string(),
+                        };
+                    }
+                }
                 draw(
                     &mut terminal,
                     report,
                     dur_copy,
                     test_started_at,
                     total_duration_for_test,
+                    machine_details,
                 )?;
             }
             None => {
@@ -100,6 +134,7 @@ fn draw(
     durations: Vec<Duration>,
     start: Instant,
     total_test_time: Duration,
+    machine_details: MachineDetails,
 ) -> Result<(), Box<dyn Error>> {
     terminal.draw(|f| {
         let row4 = Layout::default()
@@ -161,13 +196,48 @@ fn draw(
 
         f.render_widget(err_code_bar_chart, mid[0]);
 
+        let ssid = Spans::from(vec![Span::styled(
+            format!("{} : {:<9}", "SSID", machine_details.ssid),
+            Style::default().fg(Color::Cyan),
+        )]);
 
-        let machine_details_list = List::new(Vec::new())
-        .block(Block::default().borders(Borders::ALL).title("Machine Details"))
-        .start_corner(Corner::TopLeft);
+        let frequency = Spans::from(vec![Span::styled(
+            format!("{} : {} MHz ", "Frequency", machine_details.frequency),
+            Style::default().fg(Color::Cyan),
+        )]);
+
+        let tx_bitrate = Spans::from(vec![Span::styled(
+            format!("{} : {} Mb/s", "Transmission Bitrate", machine_details.tx_bitrate),
+            Style::default().fg(Color::Cyan),
+        )]);
+
+        let rx_bitrate = Spans::from(vec![Span::styled(
+            format!("{} : {} Mb/s", "Receive Bitrate", machine_details.rx_bitrate),
+            Style::default().fg(Color::Cyan),
+        )]);
+
+        let avg_signal = Spans::from(vec![Span::styled(
+            format!("{} : {} dBm", "Avegrage Signal Strength", machine_details.avg_signal),
+            Style::default().fg(Color::Cyan),
+        )]);
+
+        let details: Vec<ListItem> = vec![
+            ListItem::new(vec![ssid]),
+            ListItem::new(vec![frequency]),
+            ListItem::new(vec![tx_bitrate]),
+            ListItem::new(vec![rx_bitrate]),
+            ListItem::new(vec![avg_signal]),
+        ];
+
+        let machine_details_list = List::new(details)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Machine Details"),
+            )
+            .start_corner(Corner::TopLeft);
 
         f.render_widget(machine_details_list, mid[1]);
-
 
         let mut dur_collection = durations
             .iter()
@@ -236,7 +306,11 @@ fn draw(
             .collect();
 
         let events_list = List::new(events)
-            .block(Block::default().borders(Borders::ALL).title("Request Details"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Request Details"),
+            )
             .start_corner(Corner::TopLeft);
 
         f.render_widget(events_list, bottom[0]);

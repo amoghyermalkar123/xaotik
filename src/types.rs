@@ -6,7 +6,7 @@ pub struct Report {
     pub total_requests: i64,
     pub elapsed: u64,
     pub transaction_rate: f64,
-    pub duration : Duration
+    pub duration: Duration,
 }
 
 impl Report {
@@ -31,5 +31,25 @@ impl Report {
         self.failed += failed_count;
         self.total_requests += total_req_count;
         self.elapsed = el;
+    }
+}
+
+pub struct MachineDetails {
+    pub ssid: String,
+    pub tx_bitrate: f32,
+    pub rx_bitrate: f32,
+    pub avg_signal: u8,
+    pub frequency: u32,
+}
+
+impl  MachineDetails {
+    pub fn new() -> Self {
+        MachineDetails {
+             ssid : "".to_string(),
+             tx_bitrate : 0.0,
+             rx_bitrate : 0.0,
+             avg_signal : 0,
+             frequency : 0,
+        }
     }
 }

@@ -1,14 +1,11 @@
-use futures::{self};
 use std::{
-    error::Error,
     sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::sync::mpsc::{self};
 mod tui_backend;
 mod types;
-use tokio::sync::mpsc::Sender;
-use types::Report;
+use types::{Report, MachineDetails};
 
 pub struct Tower {
     // send end
