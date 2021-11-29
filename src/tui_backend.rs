@@ -17,11 +17,12 @@ use std::time::Instant;
 use tokio::sync::mpsc::{self, Receiver};
 use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Corner, Direction, Layout, Rect};
-use tui::style::{Color, Style};
+use tui::style::{Color, Modifier, Style};
+use tui::symbols;
 use tui::text::{Span, Spans};
 use tui::widgets::{
-    BarChart, Block, Borders, Chart, Dataset, Gauge, List, ListItem, ListState, Paragraph,
-    Sparkline, Table,
+    Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, GraphType, List, ListItem, ListState,
+    Paragraph, Sparkline, Table,
 };
 use tui::Terminal;
 
@@ -61,6 +62,8 @@ pub async fn write_to_t(
     let mut durations: Vec<std::time::Duration> = Vec::new();
     terminal.clear()?;
 
+    let mut p99_data: Vec<(f64, f64)> = Vec::new();
+
     loop {
         match report_receiver.recv().await {
             Some(received_report) => {
@@ -72,8 +75,6 @@ pub async fn write_to_t(
                 );
 
                 durations.push(received_report.duration);
-
-                let dur_copy = durations.clone();
 
                 report.transaction_rate =
                     test_started_at.elapsed().as_secs_f64() / received_report.total_requests as f64;
@@ -109,13 +110,33 @@ pub async fn write_to_t(
                         };
                     }
                 }
+
+                let mut dur_collection = durations
+                    .iter()
+                    .map(|dur| dur.as_secs_f64())
+                    .collect::<Vec<_>>();
+
+                let (p99, p95, p90) = calculate_percentile(&mut dur_collection);
+
+                p99_data.append(&mut vec![(report.elapsed as f64, p99)]);
+
+                let p99data = p99_data.clone();
+
+                let x_elapsed = (test_started_at.elapsed().as_secs_f64()).trunc();
+                let y_offset = (p99 + 0.9).trunc();
+
                 draw(
                     &mut terminal,
                     report,
-                    dur_copy,
                     test_started_at,
                     total_duration_for_test,
                     machine_details,
+                    p99,
+                    p95,
+                    p90,
+                    p99data,
+                    x_elapsed,
+                    y_offset,
                 )?;
             }
             None => {
@@ -131,10 +152,15 @@ pub async fn write_to_t(
 fn draw(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     report: &Report,
-    durations: Vec<Duration>,
     start: Instant,
     total_test_time: Duration,
     machine_details: MachineDetails,
+    p99: f64,
+    p95: f64,
+    p90: f64,
+    p99_data: Vec<(f64, f64)>,
+    x_elapsed: f64,
+    y_axis_offset: f64,
 ) -> Result<(), Box<dyn Error>> {
     terminal.draw(|f| {
         let row4 = Layout::default()
@@ -207,17 +233,26 @@ fn draw(
         )]);
 
         let tx_bitrate = Spans::from(vec![Span::styled(
-            format!("{} : {} Mb/s", "Transmission Bitrate", machine_details.tx_bitrate),
+            format!(
+                "{} : {} Mb/s",
+                "Transmission Bitrate", machine_details.tx_bitrate
+            ),
             Style::default().fg(Color::Cyan),
         )]);
 
         let rx_bitrate = Spans::from(vec![Span::styled(
-            format!("{} : {} Mb/s", "Receive Bitrate", machine_details.rx_bitrate),
+            format!(
+                "{} : {} Mb/s",
+                "Receive Bitrate", machine_details.rx_bitrate
+            ),
             Style::default().fg(Color::Cyan),
         )]);
 
         let avg_signal = Spans::from(vec![Span::styled(
-            format!("{} : {} dBm", "Avegrage Signal Strength", machine_details.avg_signal),
+            format!(
+                "{} : {} dBm",
+                "Avegrage Signal Strength", machine_details.avg_signal
+            ),
             Style::default().fg(Color::Cyan),
         )]);
 
@@ -239,12 +274,61 @@ fn draw(
 
         f.render_widget(machine_details_list, mid[1]);
 
-        let mut dur_collection = durations
-            .iter()
-            .map(|dur| dur.as_secs_f64())
-            .collect::<Vec<_>>();
+        let bottomest = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(100)].as_ref())
+            .split(row4[3]);
 
-        let (p99, p95, p90) = calculate_percentile(&mut dur_collection);
+        let datasets = vec![Dataset::default()
+            .name("data")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Yellow))
+            .graph_type(GraphType::Line)
+            .data(&p99_data)];
+
+        let chart = Chart::new(datasets)
+            .block(
+                Block::default()
+                    .title(Span::styled(
+                        "Chart 3",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ))
+                    .borders(Borders::ALL),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("time (sec)")
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, x_elapsed])
+                    .labels(vec![
+                        Span::styled("0", Style::default().add_modifier(Modifier::BOLD)),
+                        // Span::raw("5"),
+                        Span::styled(
+                            x_elapsed.to_string(),
+                            Style::default().add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("p99 latency")
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, y_axis_offset])
+                    .labels(vec![
+                        Span::styled("0", Style::default().add_modifier(Modifier::BOLD)),
+                        // Span::raw("2.5"),
+                        Span::styled(
+                            y_axis_offset.to_string(),
+                            Style::default().add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+            );
+
+
+
+        f.render_widget(chart, bottomest[0]);
 
         let request_tuple = RequestWrapper::new(
             Number::Int(report.total_requests),
