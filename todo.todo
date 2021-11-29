@@ -8,20 +8,26 @@
 
 [] write a statistics module
     [] metrics:
-        [] response time distribution (histogram)
+        [] error codes distribution (histogram)
         [*] latency distribution (p99, p95, p90)
         [*] req/sec, total, success, fail
+
+[PRIORITY] a custom bar chart widget based on f64 for latency progressions and 
+           a dot chart for response times in bottomest layer 
+
 [] file of urls to test from
 [] wrap around a CLI
 [*] wireless network interface information
         [*] use linux netlink information
-[] better error handling
-[] better code practises
+[continuous] better error handling
+[continuous] better code practises
+[] add offset for p99 latency and time in chart label for aeshetical visible chart
 [] finally a(some) reporting mechanism(s)
         * while testing have a tui
         * after test generate a report
                 * bugs
                         [*] fix : exit draw loop
+[] TESTS
 
 [last] r/w throughput
 
@@ -38,10 +44,10 @@ bugs :
                 which basically caused one request being switched and replaced over 
                 by other request when it was suspended (.await). We now have to 
                 attach or load balance a couple of requests to one task and have tokio schedule this
-                task over OS threads (which are our spawns in the load_tes function), 
+                task over OS threads (which are our spawns in the load_test function), 
                 avoiding individual requests being swithced over hence avoiding inaccurate duration/latency 
                 calculation.
-[*] elapsed time not visible 
+[] elapsed time not visible 
 [*] transaction rate not updating 
 [*] disconenct between actual test and progress bar duration 
 [] add option to consider avoidance of coordination omission problem 
