@@ -14,3 +14,5 @@ tui = { version = "0.16.0", default-features = false, features = ["crossterm"] }
 crossterm = "0.22"
 flume = "0.10.2"
 netlink_wi = "0.3.0"
+unicode-width = "0.1.5"
+ordered-float = "2.8.0"
