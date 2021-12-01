@@ -1,10 +1,13 @@
+my learnings/ weakpoints understood from this project :
+        [IMP] learn about lifetimes, ive used because i am spoiled by the compiler
+        [IMP] learn more about iterators, mapping, collect, etc
+        [IMP] get better at understanding the anatomy of error handling in rust
+        [IMP] spend a ton of time experimenting and exploring on rust without any project in mind.
+
 [*] write a basic implementation of concurrent request model.
-
-[IMP] learn about lifetimes, ive used because i am spoiled by the compiler
-[IMP] learn more about iterators, mapping, collect, etc
-[IMP] get better at understanding the anatomy of error handling in rust
-
 [*] create a pipeline between request handler tower and the tui backend 
+[*] wireless network interface information
+        [*] use linux netlink information
 
 [] write a statistics module
     [] metrics:
@@ -15,21 +18,15 @@
 [PRIORITY] a custom bar chart widget based on f64 for latency progressions and 
            a dot chart for response times in bottomest layer 
 
+[] add option to consider avoidance of coordination omission problem 
 [] file of urls to test from
 [] wrap around a CLI
-[*] wireless network interface information
-        [*] use linux netlink information
-[continuous] better error handling
-[continuous] better code practises
-[] add offset for p99 latency and time in chart label for aeshetical visible chart
+[*] add offset for p99 latency and time in chart label for aeshetical visible chart
 [] finally a(some) reporting mechanism(s)
         * while testing have a tui
         * after test generate a report
-                * bugs
-                        [*] fix : exit draw loop
+                        
 [] TESTS
-
-[last] r/w throughput
 
 bugs :
 [*] transaction rate should always be floating point 
@@ -47,13 +44,21 @@ bugs :
                 task over OS threads (which are our spawns in the load_test function), 
                 avoiding individual requests being swithced over hence avoiding inaccurate duration/latency 
                 calculation.
-[] elapsed time not visible 
 [*] transaction rate not updating 
 [*] disconenct between actual test and progress bar duration 
-[] add option to consider avoidance of coordination omission problem 
-[] p99 latency progression chart display 
+[*] elapsed time not visible (it is, in the progress bar) 
+[*] fix : exit draw loop
+
+[] p99 latency progression chart does not render properly
+
+[continuous] better error handling
+[continuous] better code practises
+
+[last] r/w throughput
+[last] put inspirations in readme
 
 inspirations : * https://github.com/hatoo/oha
                * gobench
                * loadtestninja - one which i wrote in go
                * siege
+
