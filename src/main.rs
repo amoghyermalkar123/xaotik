@@ -5,7 +5,7 @@ use std::{
 use tokio::sync::mpsc::{self};
 mod tui_backend;
 mod types;
-use types::{Report, MachineDetails};
+use types::{MachineDetails, Report};
 
 pub struct Tower {
     // send end
@@ -92,12 +92,10 @@ async fn load_test() {
             }
             // waiting for this formula to make more sense in hindsight, i just found it somewhere,
             // this is a shameless copy pasta.
-            let sleep_for = (start + i as u32 * std::time::Duration::from_secs(1) / qps as u32).into();
+            let sleep_for =
+                (start + i as u32 * std::time::Duration::from_secs(1) / qps as u32).into();
             // println!("sleeping for : {:?}", sleep_for);
-            tokio::time::sleep_until(
-                sleep_for,
-            )
-            .await;
+            tokio::time::sleep_until(sleep_for).await;
         }
     });
 

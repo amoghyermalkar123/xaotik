@@ -42,14 +42,14 @@ pub struct MachineDetails {
     pub frequency: u32,
 }
 
-impl  MachineDetails {
+impl MachineDetails {
     pub fn new() -> Self {
         MachineDetails {
-             ssid : "".to_string(),
-             tx_bitrate : 0.0,
-             rx_bitrate : 0.0,
-             avg_signal : 0,
-             frequency : 0,
+            ssid: "".to_string(),
+            tx_bitrate: 0.0,
+            rx_bitrate: 0.0,
+            avg_signal: 0,
+            frequency: 0,
         }
     }
 }

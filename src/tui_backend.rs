@@ -140,7 +140,7 @@ pub async fn write_to_t(
                 )?;
             }
             None => {
-                std::thread::sleep(std::time::Duration::from_secs(12));
+                // std::thread::sleep(std::time::Duration::from_secs(12));
                 terminal.clear()?;
                 break;
             }
@@ -325,8 +325,6 @@ fn draw(
                         ),
                     ]),
             );
-
-
 
         f.render_widget(chart, bottomest[0]);
 

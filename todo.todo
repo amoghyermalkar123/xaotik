@@ -50,6 +50,7 @@ bugs :
 [*] fix : exit draw loop
 
 [] p99 latency progression chart does not render properly
+[] cursor disappears after test is done
 
 [continuous] better error handling
 [continuous] better code practises
