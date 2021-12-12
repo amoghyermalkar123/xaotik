@@ -48,8 +48,8 @@ bugs :
 [*] disconenct between actual test and progress bar duration 
 [*] elapsed time not visible (it is, in the progress bar) 
 [*] fix : exit draw loop
+[*] p99 latency progression chart does not render properly
 
-[] p99 latency progression chart does not render properly
 [] cursor disappears after test is done
 
 [continuous] better error handling
