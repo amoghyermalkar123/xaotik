@@ -1,10 +1,12 @@
 use std::{
+    str::FromStr,
     sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::sync::mpsc::{self};
 mod tui_backend;
 mod types;
+use std::num::ParseIntError;
 use types::{MachineDetails, Report};
 
 pub struct Tower {
@@ -24,30 +26,53 @@ impl Tower {
     }
 }
 
+use structopt::StructOpt;
+
+/// loadtest the given url with the parameters
+#[derive(StructOpt)]
+struct Cli {
+    /// loadtest this host url
+    // #[structopt(short = "u", long = "host")]
+    // url : String,
+    /// duration of test
+    #[structopt(short = "d", long = "duration", default_value = "25")]
+    duration: String,
+    /// number of concurrent clients
+    #[structopt(short = "c", long = "concurrency", default_value = "10")]
+    concurrent_clients: u64,
+    /// queries per second
+    #[structopt(short = "qps", long = "queries-per-second", default_value = "10")]
+    qps: u64,
+}
+
 // #[tokio::main]
 // #[tokio::main(flavor = "current_thread")]
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<(), ()> {
-    load_test().await;
+    let args = Cli::from_args();
+    let test_duration = args.duration.parse::<u64>().unwrap_or(25);
+
+    load_test(test_duration, args.concurrent_clients, args.qps).await?;
     Ok(())
 }
 
-async fn load_test() {
+async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Result<(), ()> {
     let mut report_manager = Tower::new();
 
     let csend = report_manager.sender.clone();
 
     let (tx, rx) = flume::unbounded();
-    let workers: i32 = 10;
+    let workers: u64 = concurrent_clients;
     // load balancers are OS threads that are scheduled and managed by
     // tokio. For now 10 threads.
     let load_balancer = (0..workers)
         .map(|_| {
             let sendc = csend.clone();
             let rx = rx.clone();
+            // let read_url = &host;
             tokio::spawn(async move {
                 while let Ok(()) = rx.recv_async().await {
-                    match do_req().await {
+                    match do_req(&String::from("read_url")).await {
                         Ok(request_result) => match sendc.send(request_result).await {
                             Ok(_) => {}
                             Err(_) => {
@@ -63,7 +88,7 @@ async fn load_test() {
         .collect::<Vec<_>>();
 
     let start = Instant::now();
-    let dead_line = start + Duration::new(10, 0);
+    let dead_line = start + Duration::new(test_duration, 0);
 
     let mut report = Report::new();
 
@@ -72,13 +97,13 @@ async fn load_test() {
             &mut report,
             &mut report_manager.receiver,
             start,
-            Duration::new(10, 0),
+            Duration::new(test_duration, 0),
         )
         .await;
     });
 
     // qps is queries per second
-    let qps = 10;
+    let qps = qps;
 
     let load_gen = tokio::spawn(async move {
         for i in 0.. {
@@ -106,9 +131,11 @@ async fn load_test() {
     let _ = load_gen.await;
 
     let _ = tower.await;
+
+    Ok(())
 }
 
-async fn do_req() -> Result<Arc<Report>, ()> {
+async fn do_req(host: &String) -> Result<Arc<Report>, ()> {
     let start_of_request = Instant::now();
 
     let make_request = async {

@@ -3,7 +3,12 @@ use crate::Report;
 
 use crossterm::style::Stylize;
 use crossterm::{
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+    },
+    execute,
     style::{Print, ResetColor, SetForegroundColor},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 use netlink_wi::NlSocket;
@@ -60,7 +65,7 @@ pub async fn write_to_t(
     };
 
     let mut durations: Vec<std::time::Duration> = Vec::new();
-    terminal.clear()?;
+    // terminal.clear()?;
 
     let mut p99_data: Vec<(f64, f64)> = Vec::new();
 
@@ -118,7 +123,7 @@ pub async fn write_to_t(
 
                 let (p99, p95, p90) = calculate_percentile(&mut dur_collection);
 
-                p99_data.append(&mut vec![(report.elapsed as f64, p99)]);
+                p99_data.append(&mut vec![(test_started_at.elapsed().as_secs_f64(), p99)]);
 
                 let p99data = p99_data.clone();
 
@@ -138,15 +143,39 @@ pub async fn write_to_t(
                     x_elapsed,
                     y_offset,
                 )?;
+                // listen for keyboard event of ctrl+c
+                while crossterm::event::poll(std::time::Duration::from_secs(0))? {
+                    match crossterm::event::read()? {
+                        // User pressed q or ctrl-c
+                        Event::Key(KeyEvent {
+                            code: KeyCode::Char('q'),
+                            ..
+                        })
+                        | Event::Key(KeyEvent {
+                            code: KeyCode::Char('c'),
+                            modifiers: KeyModifiers::CONTROL,
+                        }) => {
+                            println!("YES");
+                            std::io::stdout().execute(crossterm::terminal::LeaveAlternateScreen)?;
+                            crossterm::terminal::disable_raw_mode()?;
+                            std::io::stdout().execute(crossterm::cursor::Show)?;
+                            // TODO: write report here
+                            std::process::exit(libc::EXIT_SUCCESS);
+                        }
+                        _ => (),
+                    }
+                }
             }
             None => {
-                // std::thread::sleep(std::time::Duration::from_secs(12));
                 terminal.clear()?;
-                break;
+                std::io::stdout().execute(crossterm::terminal::LeaveAlternateScreen)?;
+                crossterm::terminal::disable_raw_mode()?;
+                std::io::stdout().execute(crossterm::cursor::Show)?;
+                // TODO: print report here
+                std::process::exit(libc::EXIT_SUCCESS);
             }
         }
     }
-    Ok(())
 }
 
 fn draw(
@@ -175,8 +204,6 @@ fn draw(
                 .as_ref(),
             )
             .split(f.size());
-
-        // let progress = (report.total_requests * 100) / 1000;
 
         let now = std::time::Instant::now();
 
@@ -281,10 +308,11 @@ fn draw(
 
         let datasets = vec![Dataset::default()
             .name("data")
-            .marker(symbols::Marker::Braille)
-            .style(Style::default().fg(Color::Yellow))
-            .graph_type(GraphType::Line)
+            .marker(symbols::Marker::Dot)
+            .style(Style::default().fg(Color::Cyan))
             .data(&p99_data)];
+
+        // let _ = writefile(p99_data.clone());
 
         let chart = Chart::new(datasets)
             .block(
@@ -430,4 +458,11 @@ fn calculate_percentile(data: &mut Vec<f64>) -> (f64, f64, f64) {
     }
 
     (p99, p95, p90)
+}
+
+fn writefile(data: Vec<(f64, f64)>) -> Result<(), Box<dyn Error>> {
+    use std::fs::File;
+    let mut file = File::create("foo.txt")?;
+    writeln!(file, "{:?}", data)?;
+    Ok(())
 }
