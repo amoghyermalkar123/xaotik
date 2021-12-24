@@ -8,6 +8,9 @@ mod tui_backend;
 mod types;
 use std::num::ParseIntError;
 use types::{MachineDetails, Report};
+use tui::backend::CrosstermBackend;
+use tui::Terminal;
+use std::io::{self, Stdout};
 
 pub struct Tower {
     // send end
@@ -31,9 +34,6 @@ use structopt::StructOpt;
 /// loadtest the given url with the parameters
 #[derive(StructOpt)]
 struct Cli {
-    /// loadtest this host url
-    // #[structopt(short = "u", long = "host")]
-    // url : String,
     /// duration of test
     #[structopt(short = "d", long = "duration", default_value = "25")]
     duration: String,
@@ -43,6 +43,9 @@ struct Cli {
     /// queries per second
     #[structopt(short = "qps", long = "queries-per-second", default_value = "10")]
     qps: u64,
+    /// files to read target urls from
+    #[structopt(short = "f", long = "file")]
+    file:String,
 }
 
 // #[tokio::main]
@@ -63,8 +66,8 @@ async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Res
 
     let (tx, rx) = flume::unbounded();
     let workers: u64 = concurrent_clients;
-    // load balancers are OS threads that are scheduled and managed by
-    // tokio. For now 10 threads.
+    // load balancers are mapped to OS threads which are scheduled over cpus
+    // that are scheduled and managed by tokio (os level scheduling also there). For now 10 threads.
     let load_balancer = (0..workers)
         .map(|_| {
             let sendc = csend.clone();
@@ -93,6 +96,7 @@ async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Res
     let mut report = Report::new();
 
     let tower = tokio::spawn(async move {
+
         let _ = tui_backend::write_to_t(
             &mut report,
             &mut report_manager.receiver,
@@ -161,7 +165,6 @@ async fn do_req(host: &String) -> Result<Arc<Report>, ()> {
                     }))
                 }
             }
-
             Err(_) => Ok(Arc::new(Report {
                 succeeded: 0,
                 failed: 1,

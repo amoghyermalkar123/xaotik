@@ -1,34 +1,24 @@
 use crate::MachineDetails;
 use crate::Report;
 
-use crossterm::style::Stylize;
 use crossterm::{
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-    },
-    execute,
-    style::{Print, ResetColor, SetForegroundColor},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    event::{Event, KeyCode, KeyEvent, KeyModifiers},
     ExecutableCommand,
 };
 use netlink_wi::NlSocket;
 use std::error::Error;
-use std::io::stdout;
 use std::io::Write;
 use std::io::{self, Stdout};
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
-use tokio::sync::mpsc::{self, Receiver};
+use tokio::sync::mpsc::Receiver;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Corner, Direction, Layout, Rect};
+use tui::layout::{Constraint, Corner, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::symbols;
 use tui::text::{Span, Spans};
-use tui::widgets::{
-    Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, GraphType, List, ListItem, ListState,
-    Paragraph, Sparkline, Table,
-};
+use tui::widgets::{Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, List, ListItem};
 use tui::Terminal;
 
 enum Number {
@@ -59,9 +49,16 @@ pub async fn write_to_t(
     test_started_at: Instant,
     total_duration_for_test: Duration,
 ) -> Result<(), Box<dyn Error>> {
+    crossterm::terminal::enable_raw_mode()?;
+    io::stdout().execute(crossterm::terminal::EnterAlternateScreen)?;
+    io::stdout().execute(crossterm::cursor::Hide)?;
+
     let mut terminal = {
         let backend = CrosstermBackend::new(io::stdout());
-        Terminal::new(backend)?
+        match Terminal::new(backend) {
+            Ok(new_terminal) => new_terminal,
+            _ => panic!(),
+        }
     };
 
     let mut durations: Vec<std::time::Duration> = Vec::new();
@@ -142,6 +139,7 @@ pub async fn write_to_t(
                     p99data,
                     x_elapsed,
                     y_offset,
+                    0,
                 )?;
                 // listen for keyboard event of ctrl+c
                 while crossterm::event::poll(std::time::Duration::from_secs(0))? {
@@ -155,11 +153,10 @@ pub async fn write_to_t(
                             code: KeyCode::Char('c'),
                             modifiers: KeyModifiers::CONTROL,
                         }) => {
-                            println!("YES");
                             std::io::stdout().execute(crossterm::terminal::LeaveAlternateScreen)?;
                             crossterm::terminal::disable_raw_mode()?;
                             std::io::stdout().execute(crossterm::cursor::Show)?;
-                            // TODO: write report here
+
                             std::process::exit(libc::EXIT_SUCCESS);
                         }
                         _ => (),
@@ -167,11 +164,10 @@ pub async fn write_to_t(
                 }
             }
             None => {
-                terminal.clear()?;
                 std::io::stdout().execute(crossterm::terminal::LeaveAlternateScreen)?;
                 crossterm::terminal::disable_raw_mode()?;
                 std::io::stdout().execute(crossterm::cursor::Show)?;
-                // TODO: print report here
+
                 std::process::exit(libc::EXIT_SUCCESS);
             }
         }
@@ -190,6 +186,7 @@ fn draw(
     p99_data: Vec<(f64, f64)>,
     x_elapsed: f64,
     y_axis_offset: f64,
+    total_reqs_to_hit: u64,
 ) -> Result<(), Box<dyn Error>> {
     terminal.draw(|f| {
         let row4 = Layout::default()
@@ -207,9 +204,17 @@ fn draw(
 
         let now = std::time::Instant::now();
 
-        let progress = ((now - start).as_secs_f64() / total_test_time.as_secs_f64())
-            .max(0.0)
-            .min(1.0);
+        let gauge;
+
+        if total_reqs_to_hit == 0 {
+            gauge = get_progress_by_duration(&now, &start, &total_test_time);
+        } else {
+            // todo
+            gauge =
+                get_progress_by_num_reqs(report.total_requests as u16, total_reqs_to_hit as u16);
+        }
+
+        f.render_widget(gauge, row4[0]);
 
         let mid = Layout::default()
             .direction(Direction::Horizontal)
@@ -220,20 +225,6 @@ fn draw(
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
             .split(row4[2]);
-
-        let t = Duration::from(std::time::Duration::from_secs(
-            (now - start).as_secs_f64() as u64
-        ));
-
-        let gauge_label = format!("{:?} / {:?}", t, Duration::from(total_test_time));
-
-        let gauge = Gauge::default()
-            .block(Block::default().title("Progress").borders(Borders::ALL))
-            .gauge_style(Style::default().fg(tui::style::Color::Green))
-            .label(Span::raw(gauge_label))
-            .ratio(progress);
-        f.render_widget(gauge, row4[0]);
-
         let err_code_data: Vec<(&str, u64)> = vec![("s1", 110), ("s1", 1010)];
 
         let err_histo_width = 7;
@@ -460,9 +451,37 @@ fn calculate_percentile(data: &mut Vec<f64>) -> (f64, f64, f64) {
     (p99, p95, p90)
 }
 
-fn writefile(data: Vec<(f64, f64)>) -> Result<(), Box<dyn Error>> {
-    use std::fs::File;
-    let mut file = File::create("foo.txt")?;
-    writeln!(file, "{:?}", data)?;
-    Ok(())
+fn get_progress_by_duration<'a>(
+    now: &'a Instant,
+    start: &'a Instant,
+    total_test_time: &'a Duration,
+) -> Gauge<'a> {
+    let progress = ((*now - *start).as_secs_f64() / total_test_time.as_secs_f64())
+        .max(0.0)
+        .min(1.0);
+
+    let t = Duration::from(std::time::Duration::from_secs(
+        (*now - *start).as_secs_f64() as u64,
+    ));
+
+    let gauge_label = format!("{:?} / {:?}", t, Duration::from(*total_test_time));
+
+    let gauge = Gauge::default()
+        .block(Block::default().title("Progress").borders(Borders::ALL))
+        .gauge_style(Style::default().fg(tui::style::Color::Green))
+        .label(Span::raw(gauge_label))
+        .ratio(progress);
+    gauge
+}
+
+fn get_progress_by_num_reqs<'a>(req_count_completed: u16, total_reqs_to_hit: u16) -> Gauge<'a> {
+    let progress = req_count_completed / total_reqs_to_hit;
+    let gauge_label = format!("{:?} / 100 %", progress);
+
+    let gauge = Gauge::default()
+        .block(Block::default().title("Progress").borders(Borders::ALL))
+        .gauge_style(Style::default().fg(tui::style::Color::Green))
+        .label(Span::raw(gauge_label))
+        .percent(progress);
+    gauge
 }
