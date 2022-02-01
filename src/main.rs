@@ -46,6 +46,8 @@ struct Cli {
     /// files to read target urls from
     #[structopt(short = "f", long = "file")]
     file:String,
+    #[structopt(short = "u", long = "url")]
+    url:String,
 }
 
 // #[tokio::main]
@@ -55,11 +57,13 @@ async fn main() -> Result<(), ()> {
     let args = Cli::from_args();
     let test_duration = args.duration.parse::<u64>().unwrap_or(25);
 
-    load_test(test_duration, args.concurrent_clients, args.qps).await?;
+    let readonly_url = Arc::new(args.url);
+
+    load_test(test_duration, args.concurrent_clients, args.qps, readonly_url).await?;
     Ok(())
 }
 
-async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Result<(), ()> {
+async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64, url:Arc<String>) -> Result<(), ()> {
     let mut report_manager = Tower::new();
 
     let csend = report_manager.sender.clone();
@@ -68,14 +72,17 @@ async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Res
     let workers: u64 = concurrent_clients;
     // load balancers are mapped to OS threads which are scheduled over cpus
     // that are scheduled and managed by tokio (os level scheduling also there). For now 10 threads.
+
     let load_balancer = (0..workers)
         .map(|_| {
             let sendc = csend.clone();
             let rx = rx.clone();
             // let read_url = &host;
+            let host_url = url.clone();
+
             tokio::spawn(async move {
                 while let Ok(()) = rx.recv_async().await {
-                    match do_req(&String::from("read_url")).await {
+                    match do_req(host_url.as_str()).await {
                         Ok(request_result) => match sendc.send(request_result).await {
                             Ok(_) => {}
                             Err(_) => {
@@ -139,11 +146,11 @@ async fn load_test(test_duration: u64, concurrent_clients: u64, qps: u64) -> Res
     Ok(())
 }
 
-async fn do_req(host: &String) -> Result<Arc<Report>, ()> {
+async fn do_req(host: &str) -> Result<Arc<Report>, ()> {
     let start_of_request = Instant::now();
 
     let make_request = async {
-        match reqwest::get("http://www.google.com/").await {
+        match reqwest::get(host).await {
             Ok(res) => {
                 if res.status() == 200 {
                     Ok(Arc::new(Report {
